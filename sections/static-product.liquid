@@ -1,0 +1,592 @@
+{%- comment -%}
+  Banner note:
+  We added a Custom liquid block under the Product pages section in the theme editor.
+  This Custom liquid block is used for promo banners.
+  In this file (static-product.liquid), we render that Custom liquid block right above the Add to cart button.
+{%- endcomment -%}
+
+
+{%
+  include 'api' with 'product:json',
+  product: product
+%}
+ 
+{% assign show_stock_level = true %}
+ 
+{% if settings.product_show_stock_level == 'hidden' %}
+  {% assign show_stock_level = false %}
+{% endif %}
+ 
+ 
+<script
+  type="application/json"
+  data-section-type="static-product"
+  data-section-id="{{ section.id }}"
+  data-section-data
+>
+  {
+    "settings": {
+      "cart_redirection": {{ section.settings.product_cart_redirect | json }},
+      "layout": {{ section.settings.layout | json }},
+      "money_format": {{ shop.money_format | strip_html | json }},
+      "thumbnail_position": {{ section.settings.gallery_thumbnail_position | json }},
+      "gallery_video_autoplay": {{ section.settings.gallery_video_autoplay | json }},
+      "gallery_video_looping": {{ section.settings.gallery_video_looping | json }},
+      "hover_zoom": {{ section.settings.gallery_hover_zoom | json }},
+      "click_to_zoom": {{ section.settings.gallery_click_to_zoom | json }},
+      "lazy_load": {{ settings.lazy_load | json }},
+      "enableHistory": true,
+      "enableSwatches": {{ settings.swatches_enable | json }},
+      "enableStockBadge": {{ show_stock_level | json }}
+    },
+    "context": {
+      "product_available": {{ 'product.buttons.add_to_cart' | t | json }},
+      "product_unavailable": {{ 'product.buttons.sold_out' | t | json }}
+    },
+      "product": {{ json }},
+    "models": {{ product.media | where: 'media_type', 'model' | json }}  
+  }
+</script>
+ 
+ 
+ 
+{%- if section.settings.show_breadcrumbs -%}
+  {% include 'breadcrumbs' %}
+{%- endif -%}
+ 
+<section
+  class="
+    product--container
+    {{ section.settings.layout }}
+    {% unless section.settings.show_breadcrumbs %}no-breadcrumbs{% endunless %}
+    custom-product--{{ product.handle }}
+    {% for c in product.collections %}custom-collection--{{ c.handle }} {% endfor %}
+  "
+  data-product-wrapper
+ 
+ 
+>
+  {%
+    include 'product',
+    layout: section.settings.layout,
+    is_product_modal: false,
+    gallery_aspect_ratio: section.settings.gallery_aspect_ratio,
+    gallery_thumbnail_position: section.settings.gallery_thumbnail_position,
+    gallery_image_crop: section.settings.gallery_image_crop,
+    gallery_click_to_zoom: section.settings.gallery_click_to_zoom,
+    gallery_hover_zoom: section.settings.gallery_hover_zoom,
+    collaboration_label: section.settings.collaboration_label,
+    finish_label: section.settings.finish_label,
+    manufacturer_stock_label: section.settings.manufacturer_stock_label,
+    manufacturer_quantity_label: section.settings.manufacturer_quantity_label,
+    union_sku_label: section.settings.union_sku_label,
+    item_number_label: section.settings.item_number_label,
+    active_label: section.settings.active_label,
+    extra_info_label: section.settings.extra_info_label,
+    status_date_label: section.settings.status_date_label,
+    effective_date_label: section.settings.effective_date_label,
+    carton_size_label: section.settings.carton_size_label,
+    carton_size_2_label: section.settings.carton_size_2_label,
+    total_shipping_weight_label: section.settings.total_shipping_weight_label,
+    shipped_via_label: section.settings.shipped_via_label,
+    dropship_label: section.settings.dropship_label,
+    shade_label: section.settings.shade_label,
+    material_label: section.settings.material_label,
+    dimensions_label: section.settings.dimensions_label,
+    weight_label: section.settings.weight_label,
+    fan_airflow_label: section.settings.fan_airflow_label,
+    electricity_use_label: section.settings.electricity_use_label,
+    airflow_efficiency_label: section.settings.airflow_efficiency_label,
+    blade_qty_label: section.settings.blade_qty_label,
+    blade_finish_label: section.settings.blade_finish_label,
+    bulbs_label: section.settings.bulbs_label,
+    safety_rating_label: section.settings.safety_rating_label,
+    rug_pile_height_label: section.settings.rug_pile_height_label,
+    center_to_center_label: section.settings.center_to_center_label,
+    projection_label: section.settings.projection_label,
+    diameter_label: section.settings.diameter_label,
+    base_diameter_label: section.settings.base_diameter_label,
+    width_label: section.settings.width_label,
+    length_label: section.settings.length_label,
+    base_length_label: section.settings.base_length_label,
+    installation_type_label: section.settings.installation_type_label,
+    spec_sheet_label: section.settings.spec_sheet_label,
+    instructions_label: section.settings.instructions_label,
+    extranote_label: section.settings.extranote_label,
+    in_stock_manufacturer_msg: section.settings.in_stock_manufacturer_msg,
+    in_stock_manufacturer_union_msg: section.settings.in_stock_manufacturer_union_msg,
+    out_of_stock_manufacturer_msg: section.settings.out_of_stock_manufacturer_msg,
+    out_of_stock_manufacturer_eta_msg: section.settings.out_of_stock_manufacturer_eta_msg,
+    click_here_text: section.settings.click_here_text,
+    none_text: section.settings.none_text,
+  %}
+  
+</section>
+ 
+{% if section.settings.enable_related_products %}
+  {% assign related_collection = collection %}
+  {% if collection == null or collection.handle == 'frontpage' or collection.handle == 'all' %}
+    {% assign collection_found = false %}
+    {% for c in product.collections %}
+      {% if collection_found == false and c.handle != 'frontpage' and c.handle != 'all' %}
+        {% assign collection_found = true %}
+        {% assign related_collection = c %}
+        {% break %}
+      {% endif %}
+    {% endfor %}
+  {% endif %}
+ 
+  {% if related_collection.products.size > 0 %}
+    {%
+      include 'related-products',
+      current_product: product.id
+    %}
+  {% endif %}
+{% endif %}
+<div id="globoRelatedProducts"></div>
+{% schema %}
+{
+  "name": "Product pages",
+  "class": "product--section",
+  "settings": [
+    {
+      "type": "checkbox",
+      "id": "show_breadcrumbs",
+      "label": "Show breadcrumb navigation",
+      "default": true
+    },
+    {
+      "id": "layout",
+      "type": "select",
+      "label": "Layout",
+      "options": [
+        {
+          "value": "layout--two-col",
+          "label": "2 columns (small image)"
+        },
+        {
+          "value": "layout--two-col-medium",
+          "label": "2 columns (medium image)"
+        },
+        {
+          "value": "layout--two-col-large",
+          "label": "2 columns (large image)"
+        },
+        {
+          "value": "layout--three-col",
+          "label": "3 columns"
+        }
+      ],
+      "default": "layout--three-col"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_dcb",
+      "label": "Show dynamic checkout button",
+      "info": "Customers will be shown their preferred payment method, based on their device, shopping history and the options you've enabled. [Learn more](https://help.shopify.com/manual/using-themes/change-the-layout/dynamic-checkout)",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "product_cart_redirect",
+      "label": "Enable cart redirection",
+      "info": "Automatically sends users to the Cart page after adding a product.",
+      "default": false
+    },
+    {
+      "type": "header",
+      "content": "Media"
+    },
+    {
+      "type": "paragraph",
+      "content": "Learn more about [media types](https://help.shopify.com/en/manual/products/product-media/product-media-types)"
+    },
+    {
+      "type": "select",
+      "id": "gallery_aspect_ratio",
+      "label": "Aspect ratio",
+      "options": [
+        { "value": "natural", "label": "Natural" },
+        { "value": "short", "label": "Short (4:3)" },
+        { "value": "square", "label": "Square (1:1)" },
+        { "value": "tall", "label": "Tall (2:3)" }
+      ],
+      "default": "natural"
+    },
+    {
+      "type": "checkbox",
+      "id": "gallery_image_crop",
+      "label": "Enable image crop",
+      "info": "If disabled, white space will be applied around the image. Has no effect when media aspect ratio is set to natural.",
+      "default": false
+    },
+    {
+      "id": "gallery_thumbnail_position",
+      "type": "select",
+      "label": "Thumbnails position",
+      "options": [
+        {
+          "value": "below",
+          "label": "Below main image"
+        },
+        {
+          "value": "left",
+          "label": "Left of main image"
+        }
+      ],
+      "default": "below"
+    },
+    {
+      "type": "checkbox",
+      "id": "gallery_video_autoplay",
+      "label": "Enable video autoplay",
+      "default": true
+    },
+    {
+      "type": "checkbox",
+      "id": "gallery_video_looping",
+      "label": "Enable video looping",
+      "default": true
+    },
+    {
+      "id": "gallery_hover_zoom",
+      "type": "select",
+      "label": "Roll-over image zoom",
+      "options": [
+        {
+          "value": "disabled",
+          "label": "Disabled"
+        },
+        {
+          "value": "separate",
+          "label": "Enabled (separate box)"
+        },
+        {
+          "value": "replace",
+          "label": "Enabled (replace main image)"
+        }
+      ],
+      "info": "Only applies to desktop screen sizes.",
+      "default": "disabled"
+    },
+    {
+      "id": "gallery_click_to_zoom",
+      "type": "select",
+      "label": "Click to zoom image",
+      "options": [
+        {
+          "value": "disabled",
+          "label": "Disabled"
+        },
+        {
+          "value": "always",
+          "label": "Enabled"
+        },
+        {
+          "value": "desktop",
+          "label": "Enabled on desktop only"
+        },
+        {
+          "value": "mobile",
+          "label": "Enabled on mobile only"
+        }
+      ],
+      "default": "always",
+      "info": "Changes to \"Tap to zoom\" on mobile."
+    },
+    {
+      "type": "paragraph",
+      "content": "For the best zoom results, make sure your images are larger than 1600px."
+    },
+    {
+      "type": "header",
+      "content": "Product Field Labels"
+    },
+    {
+      "type": "richtext",
+      "id": "manufacturer_stock_label",
+      "label": "Manufacturer Stock Label",
+      "default": "<p>Manufacturer Stock</p>"
+    },
+    {
+      "type": "richtext",
+      "id": "manufacturer_quantity_label",
+      "label": "Manufacturer Quantity Label",
+      "default": "<p>Manufacturer Quantity</p>"
+    },
+    {
+      "type": "richtext",
+      "id": "union_sku_label",
+      "label": "Union SKU Label",
+      "default": "<p>Union SKU</p>"
+    },
+    {
+      "type": "richtext",
+      "id": "item_number_label",
+      "label": "Item # Label",
+      "default": "<p>Item #</p>"
+    },
+    {
+      "type": "richtext",
+      "id": "active_label",
+      "label": "Active Label",
+      "default": "<p>Active</p>"
+    },
+    {
+      "type": "richtext",
+      "id": "extra_info_label",
+      "label": "Extra Info Label",
+      "default": "<p>Extra Info</p>"
+    },
+    {
+      "type": "richtext",
+      "id": "status_date_label",
+      "label": "Status Change Date Label",
+      "default": "<p>Active/Discontinued Status Change Date</p>"
+    },
+    {
+      "type": "richtext",
+      "id": "effective_date_label",
+      "label": "Effective Date Label",
+      "default": "<p>Price Sheet Effective Date</p>"
+    },
+    {
+      "type": "richtext",
+      "id": "carton_size_label",
+      "label": "Carton Size Label",
+      "default": "<p>Shipping Carton Size</p>"
+    },
+    {
+      "type": "richtext",
+      "id": "carton_size_2_label",
+      "label": "Carton Size 2 Label",
+      "default": "<p>Shipping Carton 2 Size</p>"
+    },
+    {
+      "type": "richtext",
+      "id": "total_shipping_weight_label",
+      "label": "Total Shipping Weight Label",
+      "default": "<p>Total Shipping Weight of All boxes</p>"
+    },
+    {
+      "type": "richtext",
+      "id": "shipped_via_label",
+      "label": "Shipped Via Label",
+      "default": "<p>Shipped Via</p>"
+    },
+    {
+      "type": "richtext",
+      "id": "dropship_label",
+      "label": "Drop Ship Label",
+      "default": "<p>Drop Ship</p>"
+    },
+    {
+      "type": "richtext",
+      "id": "collaboration_label",
+      "label": "Collaboration Label",
+      "default": "<p>Collaboration</p>"
+    },
+    {
+      "type": "richtext",
+      "id": "finish_label",
+      "label": "Finish Label",
+      "default": "<p>Finish</p>"
+    },
+    {
+      "type": "richtext",
+      "id": "shade_label",
+      "label": "Shade Label",
+      "default": "<p>Shade</p>"
+    },
+    {
+      "type": "richtext",
+      "id": "material_label",
+      "label": "Material Label",
+      "default": "<p>Material</p>"
+    },
+    {
+      "type": "richtext",
+      "id": "dimensions_label",
+      "label": "Dimensions Label",
+      "default": "<p>Dimensions</p>"
+    },
+    {
+      "type": "richtext",
+      "id": "weight_label",
+      "label": "Weight Label",
+      "default": "<p>Weight</p>"
+    },
+    {
+      "type": "richtext",
+      "id": "fan_airflow_label",
+      "label": "Fan Airflow Label",
+      "default": "<p>Fan Airflow</p>"
+    },
+    {
+      "type": "richtext",
+      "id": "electricity_use_label",
+      "label": "Electricity Use Label",
+      "default": "<p>Electricity Use</p>"
+    },
+    {
+      "type": "richtext",
+      "id": "airflow_efficiency_label",
+      "label": "Airflow Efficiency Label",
+      "default": "<p>Airflow Efficiency</p>"
+    },
+    {
+      "type": "richtext",
+      "id": "blade_qty_label",
+      "label": "Blade Qty Label",
+      "default": "<p>Blade Qty</p>"
+    },
+    {
+      "type": "richtext",
+      "id": "blade_finish_label",
+      "label": "Blade Finish Label",
+      "default": "<p>Blade Finish</p>"
+    },
+    {
+      "type": "richtext",
+      "id": "bulbs_label",
+      "label": "Bulbs Label",
+      "default": "<p>Bulbs</p>"
+    },
+    {
+      "type": "richtext",
+      "id": "safety_rating_label",
+      "label": "Safety Rating Label",
+      "default": "<p>Safety Rating</p>"
+    },
+    {
+      "type": "richtext",
+      "id": "rug_pile_height_label",
+      "label": "Rug Pile Height Label",
+      "default": "<p>Rug Pile Height</p>"
+    },
+    {
+      "type": "richtext",
+      "id": "center_to_center_label",
+      "label": "Center to Center Label",
+      "default": "<p>Center to Center</p>"
+    },
+    {
+      "type": "richtext",
+      "id": "projection_label",
+      "label": "Projection Label",
+      "default": "<p>Projection</p>"
+    },
+    {
+      "type": "richtext",
+      "id": "diameter_label",
+      "label": "Diameter Label",
+      "default": "<p>Diameter</p>"
+    },
+    {
+      "type": "richtext",
+      "id": "base_diameter_label",
+      "label": "Base Diameter Label",
+      "default": "<p>Base Diameter</p>"
+    },
+    {
+      "type": "richtext",
+      "id": "width_label",
+      "label": "Width Label",
+      "default": "<p>Width</p>"
+    },
+    {
+      "type": "richtext",
+      "id": "length_label",
+      "label": "Length Label",
+      "default": "<p>Length</p>"
+    },
+    {
+      "type": "richtext",
+      "id": "base_length_label",
+      "label": "Base Length Label",
+      "default": "<p>Base Length</p>"
+    },
+    {
+      "type": "richtext",
+      "id": "installation_type_label",
+      "label": "Installation Type Label",
+      "default": "<p>Installation Type</p>"
+    },
+    {
+      "type": "richtext",
+      "id": "spec_sheet_label",
+      "label": "Spec Sheet Label",
+      "default": "<p>Spec Sheet</p>"
+    },
+    {
+      "type": "richtext",
+      "id": "instructions_label",
+      "label": "Instructions Label",
+      "default": "<p>Instructions</p>"
+    },
+    {
+      "type": "richtext",
+      "id": "extranote_label",
+      "label": "Extra Note Label",
+      "default": "<p>Note</p>"
+    },
+    {
+      "type": "header",
+      "content": "Availability Messages & Texts"
+    },
+    {
+      "type": "textarea",
+      "id": "in_stock_manufacturer_msg",
+      "label": "In Stock Manufacturer Message",
+      "default": "This item is in stock at our manufacturer. ETA 3-4 weeks."
+    },
+    {
+      "type": "textarea",
+      "id": "in_stock_manufacturer_union_msg",
+      "label": "In Stock Manufacturer (Union Arrival) Message",
+      "default": "This item is in stock at our manufacturer. ETA 3-4 weeks for arrival at Union."
+    },
+    {
+      "type": "textarea",
+      "id": "out_of_stock_manufacturer_msg",
+      "label": "Out of Stock Manufacturer Message",
+      "default": "This item is currently out of stock at our manufacturer. Please Email us at serviceweb@unionltg.com for its availability."
+    },
+    {
+      "type": "text",
+      "id": "out_of_stock_manufacturer_eta_msg",
+      "label": "Out of Stock Manufacturer ETA Message (use {date} for date)",
+      "default": "This item is out of stock at our manufacturer. Eta is {date}, add 3-4 weeks for arrival at Union."
+    },
+    {
+      "type": "text",
+      "id": "click_here_text",
+      "label": "Click Here Text",
+      "default": "Click here"
+    },
+    {
+      "type": "text",
+      "id": "none_text",
+      "label": "None Text",
+      "default": "None"
+    }
+  ],
+
+  "blocks": [
+    {
+      "type": "custom_liquid",
+      "name": "Custom liquid",
+      "settings": [
+        {
+          "type": "liquid",
+          "id": "custom_liquid",
+          "label": "Liquid code"
+        }
+      ]
+    }
+  ],
+  "max_blocks": 20
+}
+{% endschema %}
+
+

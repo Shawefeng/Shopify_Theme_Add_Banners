@@ -1,0 +1,222 @@
+{%- comment -%}
+This is the product form section, which is used to render the product form on the product page. We have added a Custom liquid block to this section, which allows us to add custom content to the product form.
+In this file (product-form.liquid), we render that Custom liquid block right above the Add to cart button.
+{%- endcomment -%}
+
+{% comment %}
+  Product form
+ 
+  @param product
+ 
+  @param selected_variant
+{% endcomment %}
+ 
+{% if is_product_modal and settings.quickshop_show_dcb %}
+  {% assign quickshop_smart_buttons = true %}
+{% endif %}
+ 
+{% if is_product_modal == false and section.settings.show_dcb %}
+  {% assign product_smart_buttons = true %}
+{% endif %}
+ 
+{% if selected_variant.available == false %}
+  {% assign quickshop_smart_buttons = false %}
+  {% assign product_smart_buttons = false %}
+{% endif %}
+ 
+{% assign product_form_class = '' %}
+{% if product_smart_buttons or quickshop_smart_buttons %}
+  {% assign product_form_class = 'smart-payment-enabled' %}
+{% endif %}
+ 
+{% form 'product', product, class: product_form_class, data-product-form: '' %}
+  {% if product.has_only_default_variant %}
+    <input
+      name="id"
+      value="{{ product.variants[0].id }}"
+      type="hidden">
+  {% else %}
+    {%
+      include 'product-options',
+      product: product,
+      selected_variant: selected_variant,
+      style: settings.product_option_style
+    %}
+  {% endif %}
+ 
+  {%- comment -%}Add vendor as line item property{%- endcomment -%}
+  <input
+    name="properties[Vendor]"
+    value="{{ product.vendor | escape }}"
+    type="hidden">
+ 
+  {% if settings.product_show_stock_level != 'hidden'%}
+     {%
+        include 'product-stock-level',
+        container: 'product_page',
+        variant: selected_variant,
+        inventory_quantity: selected_variant.inventory_quantity
+      %}
+  {% endif %}
+ 
+  <div class="product-form--atc">
+    <div class="product-form--atc-qty form-fields--qty" data-quantity-wrapper>
+      <div class="form-field form-field--qty-select">
+        <div class="form-field-select-wrapper">
+          <select
+            id="product-quantity-select"
+            class="form-field-input form-field-select"
+            aria-label="{{ 'general.general.quantity' | t }}"
+            data-quantity-select
+          >
+            {% for i in (1..9) %}
+              <option {% if i == 1 %}selected {% endif %}value="{{ i }}">
+                {{ i }}
+              </option>
+            {% endfor %}
+            <option value="10+">
+              10+
+            </option>
+          </select>
+          <label
+            for="product-quantity-select"
+            class="form-field-title"
+          >
+            {{ 'general.general.quantity' | t }}
+          </label>
+          {% include 'icon-library', id: 'icon-chevron-down-small' %}
+        </div>
+      </div>
+      <div class="form-field form-field--qty-input hidden">
+        <input
+          id="product-quantity-input"
+          class="form-field-input form-field-number form-field-filled"
+          value="1"
+          name="quantity"
+          type="text"
+          pattern="\d*"
+          aria-label="{{ 'general.general.quantity' | t }}"
+          data-quantity-input
+        >
+        <label
+          for="product-quantity-input"
+          class="form-field-title"
+        >
+          {{ 'general.general.quantity' | t }}
+        </label>
+      </div>
+    </div>
+ 
+    <!-- If the product tags include require_contact, Remove add to cart buttons and add the contact us -->
+    {% if product.tags contains 'require_contact' %}
+      {% style %}
+        .product-form--atc-button {
+          visibility: hidden;
+        }
+        .shopify-payment-button__more-options{
+          visibility: hidden;
+        }
+        .shopify-payment-button{
+          visibility: hidden;
+        }
+        .swym-heart{
+          visibility: hidden;
+        }
+        .swym-wishlist-cta{
+          visibility: hidden;
+        }
+        .form-field--qty-select{
+          display: none
+        }
+      {% endstyle %}
+      <span style="font-size: large;">Please <a href="mailto:serviceweb@unionltg.com">contact us</a> to place an order.</span>
+    {% endif %}
+ 
+    {%- comment -%}
+      Custom liquid blocks output (shows above Add to cart button)
+      This uses the blocks you added under "Product pages" section.
+    {%- endcomment -%}
+    {%- assign blocks_to_render = promo_blocks -%}
+    {%- if blocks_to_render == blank and section -%}
+      {%- assign blocks_to_render = section.blocks -%}
+    {%- endif -%}
+
+    {%- if blocks_to_render != blank -%}
+      {%- for block in blocks_to_render -%}
+        {%- if block.type == 'custom_liquid' -%}
+          <div class="product-custom-liquid-banner" {{ block.shopify_attributes }}>
+            {{ block.settings.custom_liquid }}
+          </div>
+        {%- endif -%}
+      {%- endfor -%}
+    {%- endif -%}
+ 
+    <button
+      class="product-form--atc-button {% unless selected_variant.available %}disabled{% endunless %}"
+      type="submit"
+      {% unless selected_variant.available %}disabled{% endunless %}
+      data-product-atc>
+      <span class="atc-button--text">
+        {% if selected_variant.available %}
+          {{ 'product.buttons.add_to_cart' | t }}
+        {% else %}
+          {{ 'product.buttons.sold_out' | t }}
+        {% endif %}
+      </span>
+      <span class="atc-button--icon">
+        {% include 'icon-library', id: 'icon-spinner' %}
+      </span>
+    </button>
+  </div>
+ 
+  {% if product_smart_buttons or quickshop_smart_buttons %}
+    {{ form | payment_button }}
+  {% endif %}
+ 
+{% endform %}
+ 
+<script>
+/*(function() {
+  const productForm = document.querySelector('[data-product-form]');
+ 
+  // Prevent duplicate event listeners
+  if (productForm && !productForm.dataset.listenerAttached) {
+    productForm.dataset.listenerAttached = 'true';
+ 
+    productForm.addEventListener('submit', function(e) {
+      e.preventDefault();
+ 
+      const variantId = {{ selected_variant.id }};
+      let quantityInput = document.querySelector('[data-quantity-input]');
+      let quantitySelect = document.querySelector('[data-quantity-select]');
+ 
+      let quantity = quantityInput && !quantityInput.closest('.hidden') ? quantityInput.value : quantitySelect.value;
+ 
+      // Ensure quantity is an integer
+      quantity = parseInt(quantity, 10) || 1;
+ 
+      const vendor = "{{ product.vendor | escape }}";
+ 
+      fetch('/cart/add.js', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: variantId,
+          quantity: quantity,
+          properties: {
+            Vendor: vendor
+          }
+        })
+      })
+      .then(response => response.json())
+      .then(data => {
+        // Ensure the vendor property is logged correctly
+        console.log("Added to cart:", data);
+ 
+      })
+      .catch(error => console.error('Error:', error));
+    });
+  }
+})();
+*/</script>
+ 
