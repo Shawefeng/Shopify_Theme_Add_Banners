@@ -20,18 +20,23 @@ Run:
 python retail_promotions_to_shopify_metafields.py
 
 .env (same folder as the script):
+
+Replace the example shop, token, and database values with your own before running. Keep credentials in your local `.env` file.
+
+```dotenv
 SHOPIFY_SHOP=xxx.myshopify.com
 SHOPIFY_TOKEN=shpat_xxx
 SHOPIFY_API_VERSION=2025-01
-DB_SERVER=sql01-union\sql2012
-DB_NAME=Ecomm_DB_PROD
-DB_USER=ssis
-DB_PASSWORD=ssis
+DB_SERVER=your-sql-server\instance
+DB_NAME=your_database
+DB_USER=your_db_user
+DB_PASSWORD=your_db_password
 SALE_PRE_DAYS=0
 PI_PRE_DAYS=0
 PI_POST_DAYS=0
 DRY_RUN=1
 DB_ONLY=0
+```
 
 Modes:
 DB_ONLY=1 means read SSMS only, no Shopify calls.
