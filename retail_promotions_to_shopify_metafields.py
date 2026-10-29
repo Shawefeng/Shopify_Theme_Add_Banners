@@ -426,7 +426,7 @@ class ShopifyClient:
         """
         idents = [{"namespace": namespace, "key": k} for k in keys]
         data = self.graphql(q, {"id": product_id, "idents": idents})
-        mfs = data.get("data", {}).get("product", {}).get("metafields", []) or []
+        mfs = (data.get("data", {}).get("product") or {}).get("metafields", []) or []
 
         out = {k: None for k in keys}
         for mf in mfs:
