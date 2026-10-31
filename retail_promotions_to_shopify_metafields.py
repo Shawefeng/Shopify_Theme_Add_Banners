@@ -186,7 +186,7 @@ class RetailPromotionsReader:
                 EntryType,
                 TRY_CONVERT(date, Date_of_Start) AS StartD,
                 TRY_CONVERT(date, Date_of_End)   AS EndD
-            FROM Ecomm_DB_PROD.dbo.SM_Retail_Sales
+            FROM dbo.SM_Retail_Sales
         )
         SELECT
             ID,
