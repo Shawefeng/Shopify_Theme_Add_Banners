@@ -572,6 +572,9 @@ def main():
                 keys_to_delete.extend([Config.MF_SALE_START, Config.MF_SALE_END])
             if not pi_should_exist:
                 keys_to_delete.extend([Config.MF_PI_START, Config.MF_PI_END])
+            elif w.pi_real_end is None:
+                # Remove a previous end date when the current PI has none.
+                keys_to_delete.append(Config.MF_PI_END)
 
             if Config.DRY_RUN:
                 if payload:
