@@ -82,6 +82,11 @@ def normalize(s: str) -> str:
     return " ".join((s or "").strip().lower().split())
 
 
+def escape_search_value(value: str) -> str:
+    """Escape literal characters used by Shopify's search query grammar."""
+    return "".join("\\" + c if c in ("\\", ":", '"', "'", "(", ")") else c for c in value)
+
+
 def to_date_only(v) -> Optional[date]:
     if v is None:
         return None
@@ -333,12 +338,12 @@ class ShopifyClient:
         """
         target = normalize(title)
 
-        data = self.graphql(q, {"q": f'title:"{title}"'})
+        data = self.graphql(q, {"q": f'title:"{escape_search_value(title)}"'})
         for n in data["data"]["collections"]["nodes"]:
             if normalize(n.get("title", "")) == target:
                 return n["id"], n["title"]
 
-        data2 = self.graphql(q, {"q": f"title:{title}"})
+        data2 = self.graphql(q, {"q": f"title:{escape_search_value(title)}"})
         for n in data2["data"]["collections"]["nodes"]:
             if normalize(n.get("title", "")) == target:
                 return n["id"], n["title"]
@@ -383,7 +388,7 @@ class ShopifyClient:
           }
         }
         """
-        qstr = f'vendor:"{vendor}"'
+        qstr = f'vendor:"{escape_search_value(vendor)}"'
 
         while has_next:
             data = self.graphql(q, {"q": qstr, "cursor": cursor})
