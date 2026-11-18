@@ -20,8 +20,8 @@ def client(*responses):
     return instance
 
 
-def collections(nodes):
-    return {"data": {"collections": {"nodes": nodes}}}
+def collections(nodes, more=False, cursor=None):
+    return {"data": {"collections": {"nodes": nodes, "pageInfo": {"hasNextPage": more, "endCursor": cursor}}}}
 
 
 def products(nodes, more=False, cursor=None):
@@ -71,6 +71,28 @@ class LiteralSearchTests(unittest.TestCase):
             self.assertEqual(call.args[1]["q"], r'vendor:"ACME \"Studio\"\: \(West\)\\North"')
         self.assertIsNone(shop.graphql.call_args_list[0].args[1]["cursor"])
         self.assertEqual(shop.graphql.call_args_list[1].args[1]["cursor"], "next")
+
+    def test_collection_phrase_search_continues_before_fallback(self):
+        shop = client(
+            collections([{"id": f"other-{i}", "title": f"Aster Lighting Sale {i}"} for i in range(20)], True, "phrase-next"),
+            collections([{"id": "wanted", "title": "Aster Lighting"}]),
+        )
+        self.assertEqual(shop.find_collection_by_title_exact("Aster Lighting"), ("wanted", "Aster Lighting"))
+        calls = shop.graphql.call_args_list
+        self.assertEqual(calls[0].args[1]["q"], calls[1].args[1]["q"])
+        self.assertEqual(calls[1].args[1]["cursor"], "phrase-next")
+
+    def test_collection_fallback_also_checks_later_pages(self):
+        shop = client(
+            collections([]),
+            collections([{"id": "other", "title": "Other"}], True, "fallback-next"),
+            collections([{"id": "wanted", "title": "Aster Lighting"}]),
+        )
+        self.assertEqual(shop.find_collection_by_title_exact("Aster Lighting"), ("wanted", "Aster Lighting"))
+        calls = shop.graphql.call_args_list
+        self.assertIsNone(calls[1].args[1]["cursor"])
+        self.assertEqual(calls[2].args[1]["cursor"], "fallback-next")
+        self.assertEqual(calls[1].args[1]["q"], calls[2].args[1]["q"])
 
     def test_plain_vendor_query_is_unchanged(self):
         shop = client(products([]))

@@ -330,23 +330,25 @@ class ShopifyClient:
 
     def find_collection_by_title_exact(self, title: str) -> Optional[Tuple[str, str]]:
         q = """
-        query($q: String!) {
-          collections(first: 20, query: $q) {
+        query($q: String!, $cursor: String) {
+          collections(first: 20, after: $cursor, query: $q) {
             nodes { id title }
+            pageInfo { hasNextPage endCursor }
           }
         }
         """
         target = normalize(title)
-
-        data = self.graphql(q, {"q": f'title:"{escape_search_value(title)}"'})
-        for n in data["data"]["collections"]["nodes"]:
-            if normalize(n.get("title", "")) == target:
-                return n["id"], n["title"]
-
-        data2 = self.graphql(q, {"q": f"title:{escape_search_value(title)}"})
-        for n in data2["data"]["collections"]["nodes"]:
-            if normalize(n.get("title", "")) == target:
-                return n["id"], n["title"]
+        for search in (f'title:"{escape_search_value(title)}"', f"title:{escape_search_value(title)}"):
+            cursor = None
+            while True:
+                data = self.graphql(q, {"q": search, "cursor": cursor})
+                connection = data["data"]["collections"]
+                for node in connection["nodes"]:
+                    if normalize(node.get("title", "")) == target:
+                        return node["id"], node["title"]
+                if not connection["pageInfo"]["hasNextPage"]:
+                    break
+                cursor = connection["pageInfo"]["endCursor"]
 
         return None
 
