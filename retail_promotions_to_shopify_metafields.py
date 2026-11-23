@@ -323,6 +323,10 @@ class ShopifyClient:
 
                 return data
             except Exception as e:
+                # Retrying the same credentials cannot resolve authentication or rejection.
+                if (isinstance(e, requests.HTTPError) and e.response is not None
+                        and e.response.status_code in (401, 403)):
+                    raise
                 last_err = e
                 time.sleep(1.0 + attempt * 1.0)
 

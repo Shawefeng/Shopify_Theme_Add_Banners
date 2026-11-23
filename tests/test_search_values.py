@@ -1,9 +1,12 @@
-"""Offline regression checks for literal Shopify search values."""
+"""Offline regression checks for Shopify searches and request retries."""
 import ast
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Dict, List, Optional, Tuple
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
+
+import requests
 
 SOURCE = Path(__file__).resolve().parents[1] / "retail_promotions_to_shopify_metafields.py"
 tree = ast.parse(SOURCE.read_text(encoding="utf-8"))
@@ -98,6 +101,59 @@ class LiteralSearchTests(unittest.TestCase):
         shop = client(products([]))
         self.assertEqual(shop.list_product_ids_by_vendor("Aster Lighting"), [])
         self.assertEqual(shop.graphql.call_args.args[1]["q"], 'vendor:"Aster Lighting"')
+
+
+class GraphQLRetryTests(unittest.TestCase):
+    def setUp(self):
+        self.shop = Client.__new__(Client)
+        self.shop.endpoint = "https://example.invalid/graphql.json"
+        self.post = Mock()
+        self.sleep = Mock()
+        globals_patch = patch.dict(namespace, {
+            "Config": SimpleNamespace(SHOPIFY_TOKEN="test-token", REQUEST_TIMEOUT=1),
+            "requests": SimpleNamespace(post=self.post, HTTPError=requests.HTTPError),
+            "time": SimpleNamespace(sleep=self.sleep),
+        })
+        globals_patch.start()
+        self.addCleanup(globals_patch.stop)
+
+    @staticmethod
+    def response(status):
+        response = requests.Response()
+        response.status_code = status
+        response.url = "https://example.invalid/graphql.json"
+        response._content = b'{"data": {"shop": {"name": "Example"}}}'
+        return response
+
+    def test_authentication_and_forbidden_errors_fail_without_retry(self):
+        for status in (401, 403):
+            with self.subTest(status=status):
+                response = self.response(status)
+                self.post.reset_mock(side_effect=True)
+                self.sleep.reset_mock()
+                self.post.return_value = response
+                with self.assertRaises(requests.HTTPError) as error:
+                    self.shop.graphql("query { shop { name } }")
+                self.assertIs(error.exception.response, response)
+                self.post.assert_called_once()
+                self.sleep.assert_not_called()
+
+    def test_temporary_http_errors_and_network_timeouts_still_recover(self):
+        for failure in (self.response(429), self.response(503), requests.Timeout("Timed out")):
+            with self.subTest(failure=str(failure)):
+                self.post.reset_mock()
+                self.sleep.reset_mock()
+                self.post.side_effect = [failure, self.response(200)]
+                result = self.shop.graphql("query { shop { name } }")
+                self.assertEqual(result["data"]["shop"]["name"], "Example")
+                self.assertEqual(self.post.call_count, 2)
+                self.sleep.assert_called_once()
+
+    def test_persistent_temporary_error_respects_retry_limit(self):
+        self.post.return_value = self.response(503)
+        with self.assertRaisesRegex(RuntimeError, "Temporary Shopify error 503"):
+            self.shop.graphql("query { shop { name } }", retries=2)
+        self.assertEqual(self.post.call_count, 2)
 
 
 if __name__ == "__main__":
